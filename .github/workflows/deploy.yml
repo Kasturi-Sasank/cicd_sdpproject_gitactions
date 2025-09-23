@@ -76,15 +76,34 @@ jobs:
             sudo systemctl start docker
             fi
 
-            # Verify Docker Compose file exists before running commands
-            if [ -f "Docker-compose.yml" ] || [ -f "docker-compose.yml" ] || [ -f "compose.yaml" ] || [ -f "compose.yml" ]; then
-              echo "Docker Compose file found. Proceeding with deployment..."
-              # Stop old containers, rebuild, and restart (with sudo)
-              sudo docker compose down || true
-              sudo docker compose up -d --build
-            else
+            # Verify Docker Compose file exists and create symlink to standard name
+            echo "Checking for Docker Compose files in $(pwd):"
+            ls -la | grep -i compose
+            
+            # Create a symlink to the standard name docker-compose.yml regardless of case
+            if [ -f "Docker-compose.yml" ]; then
+              echo "Found Docker-compose.yml - creating symlink to standard name"
+              sudo ln -sf Docker-compose.yml docker-compose.yml
+            elif [ -f "compose.yaml" ]; then
+              echo "Found compose.yaml - creating symlink to standard name"
+              sudo ln -sf compose.yaml docker-compose.yml
+            elif [ -f "compose.yml" ]; then
+              echo "Found compose.yml - creating symlink to standard name"
+              sudo ln -sf compose.yml docker-compose.yml
+            elif [ ! -f "docker-compose.yml" ]; then
               echo "ERROR: No Docker Compose file found in $(pwd)"
               echo "Contents of directory:"
               ls -la
               exit 1
             fi
+            
+            # Verify file permissions and content
+            echo "Docker Compose file details:"
+            ls -la docker-compose.yml
+            echo "First 10 lines of docker-compose.yml:"
+            head -n 10 docker-compose.yml
+            
+            # Stop old containers, rebuild, and restart (with sudo)
+            echo "Running Docker Compose commands..."
+            sudo docker compose -f docker-compose.yml down || true
+            sudo docker compose -f docker-compose.yml up -d --build
