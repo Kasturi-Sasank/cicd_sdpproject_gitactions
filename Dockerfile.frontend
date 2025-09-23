@@ -8,6 +8,12 @@ RUN apk add --no-cache git
 # Clone your frontend repo
 RUN git clone https://github.com/Kasturi-Sasank/cicd_frontend.git .
 
+# Create .env file with proper configuration
+RUN echo "VITE_HOST=54.158.17.254" > .env
+RUN echo "VITE_PORT=5173" >> .env
+RUN echo "VITE_HMR_HOST=54.158.17.254" >> .env
+RUN echo "VITE_HMR_PORT=5173" >> .env
+
 # Install deps and build
 RUN npm install
 RUN chmod +x ./node_modules/.bin/vite

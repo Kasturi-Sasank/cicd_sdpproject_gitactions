@@ -39,6 +39,9 @@ services:
     restart: always
     ports:
       - "80:80"
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://54.158.17.254:8081
     depends_on:
       - backend
     networks:
