@@ -42,6 +42,12 @@ jobs:
           script: |
             
             cd ~/ecommercefullstack
+            
+            # First, copy deployment files to ensure Docker Compose file exists
+            if [ -d "deployment_files" ]; then
+              echo "Copying deployment files to working directory..."
+              sudo cp -r deployment_files/* .
+            fi
 
             # Install Git if missing
             if ! command -v git &> /dev/null; then
@@ -70,7 +76,15 @@ jobs:
             sudo systemctl start docker
             fi
 
-            # Stop old containers, rebuild, and restart (with sudo)
-            sudo docker compose down
-            sudo cp -r deployment_files/* .
-            sudo docker compose up -d --build
+            # Verify Docker Compose file exists before running commands
+            if [ -f "Docker-compose.yml" ] || [ -f "docker-compose.yml" ] || [ -f "compose.yaml" ] || [ -f "compose.yml" ]; then
+              echo "Docker Compose file found. Proceeding with deployment..."
+              # Stop old containers, rebuild, and restart (with sudo)
+              sudo docker compose down || true
+              sudo docker compose up -d --build
+            else
+              echo "ERROR: No Docker Compose file found in $(pwd)"
+              echo "Contents of directory:"
+              ls -la
+              exit 1
+            fi
