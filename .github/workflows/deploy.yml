@@ -1,109 +1,59 @@
-name: Deploy SDPProject on EC2
+name: Deploy to EC2
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:   # allow manual run from GitHub UI
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout repo
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-
-      # Step 2: Debug - list files in repo
-      - name: List repo files
-        run: ls -R
-
-      # Step 3: Copy files to EC2 inside ~/ecommercefullstack
-      - name: Copy repo to EC2
-        uses: appleboy/scp-action@v0.1.7
+      - uses: actions/checkout@v2
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu   # or ubuntu if Ubuntu server
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "./*"
-          target: /home/ubuntu/ecommercefullstack
- 
-
-      # Step 4: SSH into EC2 and deploy with Docker Compose
-      - name: Deploy on EC2 with Docker Compose
-        uses: appleboy/ssh-action@v1.0.0
+          node-version: '16.x'
+          
+      - name: Install dependencies
+        run: |
+          cd REACTJS/frontend
+          npm ci
+          
+      - name: Build project
+        run: |
+          cd REACTJS/frontend
+          npm run build
+          
+      - name: Create deployment package
+        run: |
+          mkdir -p deployment
+          cp -r REACTJS/frontend/dist deployment/
+          cp REACTJS/deployment_files/Docker-compose.yml deployment/
+          cp REACTJS/deployment_files/Dockerfile.frontend deployment/
+          cp REACTJS/deployment_files/Dockerfile.backend deployment/
+          cp REACTJS/deployment_files/nginx.conf deployment/
+          tar -czf deployment.tar.gz -C deployment .
+        
+      - name: Copy to EC2
+        uses: appleboy/scp-action@v0.1.4
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu    # ✅ Amazon Linux user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script_stop: true
-          debug: true
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          source: "deployment.tar.gz"
+          target: "/tmp"
+          
+      - name: Deploy on EC2
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
           script: |
-            
-            cd ~/ecommercefullstack
-            
-            # First, copy deployment files to ensure Docker Compose file exists
-            if [ -d "deployment_files" ]; then
-              echo "Copying deployment files to working directory..."
-              sudo cp -r deployment_files/* .
-            fi
-
-            # Install Git if missing
-            if ! command -v git &> /dev/null; then
-            echo "Installing Git..."
-            sudo apt-get update -y
-            sudo apt-get install -y git
-            fi
-
-            # Install Docker if missing
-            if ! command -v docker &> /dev/null; then
-            echo "Installing Docker..."
-            sudo apt-get update -y
-            sudo apt-get install -y ca-certificates curl gnupg lsb-release
-
-            sudo mkdir -p /etc/apt/keyrings
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-
-            echo \
-                "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-                $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-            sudo apt-get update -y
-            sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-            sudo systemctl enable docker
-            sudo systemctl start docker
-            fi
-
-            # Verify Docker Compose file exists and create symlink to standard name
-            echo "Checking for Docker Compose files in $(pwd):"
-            ls -la | grep -i compose
-            
-            # Create a symlink to the standard name docker-compose.yml regardless of case
-            if [ -f "Docker-compose.yml" ]; then
-              echo "Found Docker-compose.yml - creating symlink to standard name"
-              sudo ln -sf Docker-compose.yml docker-compose.yml
-            elif [ -f "compose.yaml" ]; then
-              echo "Found compose.yaml - creating symlink to standard name"
-              sudo ln -sf compose.yaml docker-compose.yml
-            elif [ -f "compose.yml" ]; then
-              echo "Found compose.yml - creating symlink to standard name"
-              sudo ln -sf compose.yml docker-compose.yml
-            elif [ ! -f "docker-compose.yml" ]; then
-              echo "ERROR: No Docker Compose file found in $(pwd)"
-              echo "Contents of directory:"
-              ls -la
-              exit 1
-            fi
-            
-            # Verify file permissions and content
-            echo "Docker Compose file details:"
-            ls -la docker-compose.yml
-            echo "First 10 lines of docker-compose.yml:"
-            head -n 10 docker-compose.yml
-            
-            # Stop old containers, rebuild, and restart (with sudo)
-            echo "Running Docker Compose commands..."
-            sudo docker compose -f docker-compose.yml down || true
-            sudo docker compose -f docker-compose.yml up -d --build
+            mkdir -p ~/app
+            tar -xzf /tmp/deployment.tar.gz -C ~/app
+            cd ~/app
+            docker-compose down || true
+            docker-compose up -d --build
