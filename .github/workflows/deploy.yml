@@ -30,10 +30,10 @@ jobs:
         run: |
           mkdir -p deployment
           cp -r REACTJS/frontend/dist deployment/
-          cp REACTJS/deployment_files/Docker-compose.yml deployment/
-          cp REACTJS/deployment_files/Dockerfile.frontend deployment/
-          cp REACTJS/deployment_files/Dockerfile.backend deployment/
-          cp REACTJS/deployment_files/nginx.conf deployment/
+          cp deployment_files/Docker-compose.yml deployment/
+          cp deployment_files/Dockerfile.frontend deployment/
+          cp deployment_files/Dockerfile.backend deployment/
+          cp deployment_files/nginx.conf deployment/
           tar -czf deployment.tar.gz -C deployment .
         
       - name: Copy to EC2
