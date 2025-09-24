@@ -19,12 +19,12 @@ jobs:
       - name: Install dependencies
         run: |
           ls -la
-          cd $GITHUB_WORKSPACE/REACTJS/frontend || (echo "Directory not found, trying alternative path" && cd $GITHUB_WORKSPACE/savenserve/REACTJS/frontend)
+          cd $GITHUB_WORKSPACE/savenserve/REACTJS/frontend || (echo "Directory not found, trying alternative path" && cd $GITHUB_WORKSPACE/savenserve/REACTJS/frontend)
           npm ci
           
       - name: Build project
         run: |
-          cd $GITHUB_WORKSPACE/REACTJS/frontend || (echo "Directory not found, trying alternative path" && cd $GITHUB_WORKSPACE/savenserve/REACTJS/frontend)
+          cd $GITHUB_WORKSPACE/savenserve/REACTJS/frontend || (echo "Directory not found, trying alternative path" && cd $GITHUB_WORKSPACE/savenserve/REACTJS/frontend)
           npm run build
           
       - name: Create deployment package
@@ -35,7 +35,7 @@ jobs:
           ls -la
           
           # Use correct paths with fallbacks
-          FRONTEND_PATH="$GITHUB_WORKSPACE/REACTJS/frontend"
+          FRONTEND_PATH="$GITHUB_WORKSPACE/savenserve/REACTJS/frontend"
           if [ ! -d "$FRONTEND_PATH" ]; then
             echo "Trying alternative frontend path"
             FRONTEND_PATH="$GITHUB_WORKSPACE/savenserve/REACTJS/frontend"
