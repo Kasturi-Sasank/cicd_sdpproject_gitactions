@@ -18,22 +18,43 @@ jobs:
           
       - name: Install dependencies
         run: |
-          cd REACTJS/frontend
+          ls -la
+          cd $GITHUB_WORKSPACE/REACTJS/frontend || (echo "Directory not found, trying alternative path" && cd $GITHUB_WORKSPACE/savenserve/REACTJS/frontend)
           npm ci
           
       - name: Build project
         run: |
-          cd REACTJS/frontend
+          cd $GITHUB_WORKSPACE/REACTJS/frontend || (echo "Directory not found, trying alternative path" && cd $GITHUB_WORKSPACE/savenserve/REACTJS/frontend)
           npm run build
           
       - name: Create deployment package
         run: |
           mkdir -p deployment
-          cp -r REACTJS/frontend/dist deployment/
-          cp deployment_files/Docker-compose.yml deployment/
-          cp deployment_files/Dockerfile.frontend deployment/
-          cp deployment_files/Dockerfile.backend deployment/
-          cp deployment_files/nginx.conf deployment/
+          # List directories to debug
+          echo "Listing current directory:"
+          ls -la
+          
+          # Use correct paths with fallbacks
+          FRONTEND_PATH="$GITHUB_WORKSPACE/REACTJS/frontend"
+          if [ ! -d "$FRONTEND_PATH" ]; then
+            echo "Trying alternative frontend path"
+            FRONTEND_PATH="$GITHUB_WORKSPACE/savenserve/REACTJS/frontend"
+          fi
+          
+          DEPLOYMENT_PATH="$GITHUB_WORKSPACE/deployment_files"
+          if [ ! -d "$DEPLOYMENT_PATH" ]; then
+            echo "Trying alternative deployment files path"
+            DEPLOYMENT_PATH="$GITHUB_WORKSPACE/savenserve/deployment_files"
+          fi
+          
+          # Copy files with proper paths
+          cp -r $FRONTEND_PATH/dist deployment/ || echo "Warning: Could not copy frontend dist"
+          cp $DEPLOYMENT_PATH/Docker-compose.yml deployment/ || echo "Warning: Could not copy Docker-compose.yml"
+          cp $DEPLOYMENT_PATH/Dockerfile.frontend deployment/ || echo "Warning: Could not copy Dockerfile.frontend"
+          cp $DEPLOYMENT_PATH/Dockerfile.backend deployment/ || echo "Warning: Could not copy Dockerfile.backend"
+          cp $DEPLOYMENT_PATH/nginx.conf deployment/ || echo "Warning: Could not copy nginx.conf"
+          
+          # Create archive
           tar -czf deployment.tar.gz -C deployment .
         
       - name: Copy to EC2
